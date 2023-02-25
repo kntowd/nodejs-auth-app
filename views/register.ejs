@@ -4,11 +4,15 @@
     <meta charset="UTF-8" />
     <meta http-equiv="X-UA-Compatible" content="IE=edge" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>ログインページ</title>
+    <title>Document</title>
   </head>
   <body>
-    <h1>ログインページ</h1>
+    <h1>新規登録ページ</h1>
     <form method="post" action="/register">
+      <div>
+        <label for="name">名前</label>
+        <input type="text" id="name" name="name" required />
+      </div>
       <div>
         <label for="email">メールアドレス</label>
         <input type="email" id="email" name="email" required />
@@ -17,11 +21,11 @@
         <label for="password">パスワード</label>
         <input type="password" id="password" name="password" required />
       </div>
-      <button type="submit">ログイン</button>
+      <button type="submit">登録</button>
     </form>
     <p>
-      アカウントをお持ちでない方は<a href="/register">こちら</a
-      >から新規登録してください。
+      アカウントをお持ちの方は<a href="/login">こちら</a
+      >からログインしてください。
     </p>
   </body>
 </html>
