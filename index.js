@@ -3,6 +3,7 @@ const jwt = require("jsonwebtoken");
 const { v4: uuid } = require("uuid");
 const cookieParser = require("cookie-parser");
 const { Pool } = require("pg");
+const bcrypt = require("bcrypt");
 
 const port = 3000;
 
@@ -37,11 +38,12 @@ app.post("/register", async (req, res) => {
   const { name, email, password } = req.body;
 
   const userId = uuid();
+  const hashedPassword = await bcrypt.hash(password, 10);
 
   const connect = await pool.connect();
   await connect.query(
     "INSERT INTO users (id, name, email, password ) VALUES($1, $2, $3, $4)",
-    [userId, name, email, password]
+    [userId, name, email, hashedPassword]
   );
   connect.release();
 
@@ -57,22 +59,24 @@ app.post("/register", async (req, res) => {
 app.post("/login", async (req, res) => {
   const { email, password } = req.body;
 
-  // パスワードを比較する
   const connect = await pool.connect();
-  const { rows } = await connect.query(
-    "SELECT * FROM users WHERE email=$1 AND password=$2",
-    [email, password]
-  );
+  const { rows } = await connect.query("SELECT * FROM users WHERE email=$1", [
+    email,
+  ]);
   connect.release();
+
+  if (bcrypt.compareSync(password, rows[0].password)) {
+    return res
+      .status(401)
+      .json({ msg: "メールアドレスまたはパスワードが間違っています" });
+  }
 
   if (rows.length <= 0) {
     return res.status(401).json({ msg: "認証に失敗しました" });
   }
 
-  // JWTトークンを作成する
   const token = jwt.sign({ userId: rows[0].id }, "secret");
 
-  // JWTトークンをクライアントに送信する
   res.cookie("token", token, { httpOnly: true });
   res.redirect("/dashboard");
 });
