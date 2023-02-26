@@ -88,6 +88,12 @@ app.get("/dashboard", async (req, res) => {
     return res.redirect("/login");
   }
 
+  try {
+    jwt.verify(token, "secret");
+  } catch (err) {
+    return res.redirect("/login");
+  }
+
   res.render("dashboard");
 });
 
