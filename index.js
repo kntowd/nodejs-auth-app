@@ -49,6 +49,17 @@ app.post("/register", async (req, res) => {
   const hashedPassword = await bcrypt.hash(password, 10);
 
   const connect = await pool.connect();
+  const { rows: users } = await connect.query(
+    "SELECT * FROM users WHERE email=$1",
+    [email]
+  );
+
+  if (users.length >= 1) {
+    return res
+      .status(401)
+      .json({ message: "メールアドレスはすでに使用済みです" });
+  }
+
   await connect.query(
     "INSERT INTO users (id, name, email, password ) VALUES($1, $2, $3, $4)",
     [userId, name, email, hashedPassword]
