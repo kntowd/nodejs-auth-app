@@ -1,19 +1,30 @@
 const express = require("express");
-const jwt = require("jsonwebtoken");
 const { v4: uuid } = require("uuid");
 const cookieParser = require("cookie-parser");
 const { Pool } = require("pg");
 const bcrypt = require("bcrypt");
+const jwt = require("jsonwebtoken");
+
 const sendPasswordResetMail = require("./externalApi/sendPasswordResetMail");
+const tokenValidate = require("./middleware/tokenValidate");
 
 const port = 3000;
-
 const app = express();
 
 app.set("view engine", "ejs");
 
 app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
+
+// ログインページを表示する
+app.get("/login", (req, res) => {
+  res.render("login");
+});
+
+// 新規登録ページを表示する
+app.get("/register", (req, res) => {
+  res.render("register");
+});
 
 const pool = new Pool({
   user: "postgres",
@@ -30,16 +41,6 @@ const isExpiredToken = (tokenCreatedDateString) => {
   return tokenElapsedHour > 1;
 };
 
-// ログインページを表示する
-app.get("/login", (req, res) => {
-  res.render("login");
-});
-
-// 新規登録ページを表示する
-app.get("/register", (req, res) => {
-  res.render("register");
-});
-
 // 新規登録を処理する
 app.post("/register", async (req, res) => {
   const { name, email, password } = req.body;
@@ -54,60 +55,44 @@ app.post("/register", async (req, res) => {
   );
   connect.release();
 
-  // JWTトークンを作成する
   const token = jwt.sign({ userId }, "secret");
 
-  // JWTトークンをクライアントに送信する
   res.cookie("token", token, { httpOnly: true });
   res.redirect("/dashboard");
 });
 
-// ログインを処理する
 app.post("/login", async (req, res) => {
   const { email, password } = req.body;
 
   const connect = await pool.connect();
-  const { rows } = await connect.query("SELECT * FROM users WHERE email=$1", [
-    email,
-  ]);
+  const { rows: users } = await connect.query(
+    "SELECT * FROM users WHERE email=$1",
+    [email]
+  );
   await connect.release();
 
-  if (rows.length <= 0) {
+  if (users.length <= 0) {
     return res.status(401).json({ message: "認証に失敗しました" });
   }
 
-  if (!bcrypt.compareSync(password, rows[0].password)) {
+  if (!bcrypt.compareSync(password, users[0].password)) {
     return res
       .status(401)
       .json({ message: "メールアドレスまたはパスワードが間違っています" });
   }
 
-  const token = jwt.sign({ userId: rows[0].id }, "secret");
-
-  res.cookie("token", token, { httpOnly: true });
+  const token = jwt.sign({ userId: users[0].id }, "secret");
 
   if (req.cookies.redirect) {
     res.clearCookie("redirect");
     return res.redirect(req.cookies.redirect);
   }
 
+  res.cookie("token", token, { httpOnly: true });
   res.redirect("/dashboard");
 });
 
-app.get("/dashboard", async (req, res) => {
-  const token = req.cookies.token;
-
-  if (!token) {
-    res.cookie("redirect", "/dashboard");
-    return res.redirect("/login");
-  }
-
-  try {
-    jwt.verify(token, "secret");
-  } catch (err) {
-    return res.redirect("/login");
-  }
-
+app.get("/dashboard", tokenValidate, async (req, res) => {
   res.render("dashboard");
 });
 
@@ -195,20 +180,7 @@ app.post("/password-reset/:token", async (req, res) => {
   res.render("passwordResetCompleted");
 });
 
-app.get("/test", async (req, res) => {
-  const token = req.cookies.token;
-
-  if (!token) {
-    res.cookie("redirect", "/test");
-    return res.redirect("/login");
-  }
-
-  try {
-    jwt.verify(token, "secret");
-  } catch (err) {
-    return res.redirect("/login");
-  }
-
+app.get("/test", tokenValidate, async (req, res) => {
   res.render("test");
 });
 
