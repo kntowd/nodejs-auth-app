@@ -37,7 +37,6 @@ app.get("/login", (req, res) => {
 
 // 新規登録ページを表示する
 app.get("/register", (req, res) => {
-  console.log("register");
   res.render("register");
 });
 
@@ -73,19 +72,25 @@ app.post("/login", async (req, res) => {
   ]);
   await connect.release();
 
-  if (bcrypt.compareSync(password, rows[0].password)) {
+  if (rows.length <= 0) {
+    return res.status(401).json({ message: "認証に失敗しました" });
+  }
+
+  if (!bcrypt.compareSync(password, rows[0].password)) {
     return res
       .status(401)
       .json({ message: "メールアドレスまたはパスワードが間違っています" });
   }
 
-  if (rows.length <= 0) {
-    return res.status(401).json({ message: "認証に失敗しました" });
-  }
-
   const token = jwt.sign({ userId: rows[0].id }, "secret");
 
   res.cookie("token", token, { httpOnly: true });
+
+  if (req.cookies.redirect) {
+    res.clearCookie("redirect");
+    return res.redirect(req.cookies.redirect);
+  }
+
   res.redirect("/dashboard");
 });
 
@@ -93,6 +98,7 @@ app.get("/dashboard", async (req, res) => {
   const token = req.cookies.token;
 
   if (!token) {
+    res.cookie("redirect", "/dashboard");
     return res.redirect("/login");
   }
 
@@ -142,7 +148,7 @@ app.post("/password-reset/send-mail", async (req, res) => {
     "SELECT * FROM users WHERE email=$1",
     [email]
   );
-  console.log("not created!");
+
   if (users.length <= 0) return res.render("passwordResetMailSent", { email });
 
   await connect.query(
@@ -150,7 +156,7 @@ app.post("/password-reset/send-mail", async (req, res) => {
     [passwordResetToken, email]
   );
   await connect.release();
-  console.log("created!");
+
   // パスワード再設定用メールを送信する
   sendPasswordResetMail(passwordResetToken);
 
@@ -187,6 +193,23 @@ app.post("/password-reset/:token", async (req, res) => {
   await connect.release();
 
   res.render("passwordResetCompleted");
+});
+
+app.get("/test", async (req, res) => {
+  const token = req.cookies.token;
+
+  if (!token) {
+    res.cookie("redirect", "/test");
+    return res.redirect("/login");
+  }
+
+  try {
+    jwt.verify(token, "secret");
+  } catch (err) {
+    return res.redirect("/login");
+  }
+
+  res.render("test");
 });
 
 app.listen(port, () => {
