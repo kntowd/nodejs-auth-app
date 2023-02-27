@@ -16,16 +16,6 @@ app.set("view engine", "ejs");
 app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
 
-// ログインページを表示する
-app.get("/login", (req, res) => {
-  res.render("login");
-});
-
-// 新規登録ページを表示する
-app.get("/register", (req, res) => {
-  res.render("register");
-});
-
 const pool = new Pool({
   user: "postgres",
   host: "127.0.0.1",
@@ -40,6 +30,16 @@ const isExpiredToken = (tokenCreatedDateString) => {
   const tokenElapsedHour = (now - tokenCreatedDate) / (60 * 60 * 1000);
   return tokenElapsedHour > 1;
 };
+
+// ログインページを表示する
+app.get("/login", (req, res) => {
+  res.render("login");
+});
+
+// 新規登録ページを表示する
+app.get("/register", (req, res) => {
+  res.render("register");
+});
 
 // 新規登録を処理する
 app.post("/register", async (req, res) => {
