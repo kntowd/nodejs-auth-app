@@ -55,9 +55,10 @@ app.post("/register", async (req, res) => {
   );
 
   if (users.length >= 1) {
-    return res
-      .status(401)
-      .json({ message: "メールアドレスはすでに使用済みです" });
+    res.status = 401;
+    return res.render("error", {
+      message: "メールアドレスはすでに使用済みです",
+    });
   }
 
   await connect.query(
@@ -83,13 +84,17 @@ app.post("/login", async (req, res) => {
   await connect.release();
 
   if (users.length <= 0) {
-    return res.status(401).json({ message: "認証に失敗しました" });
+    res.status = 401;
+    return res.render("error", {
+      message: "認証に失敗しました",
+    });
   }
 
   if (!bcrypt.compareSync(password, users[0].password)) {
-    return res
-      .status(401)
-      .json({ message: "メールアドレスまたはパスワードが間違っています" });
+    res.status = 401;
+    return res.render("error", {
+      message: "メールアドレスまたはパスワードが間違っています",
+    });
   }
 
   const token = jwt.sign({ userId: users[0].id }, "secret");
@@ -121,13 +126,17 @@ app.get("/password-reset/:token", async (req, res) => {
   );
 
   if (passwordResettings.length < 1) {
-    return res.status(400).json({ message: "存在しないページです" });
+    res.status = 401;
+    return res.render("error", {
+      message: "存在しないページです",
+    });
   }
 
   if (isExpiredToken(passwordResettings[0].created_at)) {
-    return res
-      .status(400)
-      .json({ message: "パスワード更新用リンクの期限が切れています" });
+    res.status = 400;
+    return res.render("error", {
+      message: "パスワード更新用リンクの期限が切れています",
+    });
   }
 
   await connect.release();
@@ -171,13 +180,17 @@ app.post("/password-reset/:token", async (req, res) => {
   );
 
   if (passwordResettings.length < 1) {
-    return res.status(500).json({ message: "internal server error." });
+    res.status = 500;
+    return res.render("error", {
+      message: "internal server error.",
+    });
   }
 
   if (isExpiredToken(passwordResettings[0].created_at)) {
-    return res
-      .status(400)
-      .json({ message: "パスワード更新用リンクの期限が切れています" });
+    res.status = 400;
+    return res.render("error", {
+      message: "パスワード更新用リンクの期限が切れています",
+    });
   }
 
   const hashedPassword = await bcrypt.hash(password, 10);
